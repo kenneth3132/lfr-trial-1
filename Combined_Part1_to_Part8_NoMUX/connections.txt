@@ -1,0 +1,102 @@
+========================================================================================================================
+                      LINE FOLLOWER ROBOT (LFR) — MASTER WIRING & CONNECTIONS TABLE
+                             Target Folder: Combined_Part1_to_Part8_NoMUX
+                                Architecture: Arduino Nano (Direct No-MUX)
+========================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 1: MOTOR DRIVER CONNECTIONS (TB6612FNG & L298N EQUIVALENT)
+------------------------------------------------------------------------------------------------------------------------
++---------------+---------------+-------------------+------------------+---------------------+-------------------------+
+| Subsystem     | Nano Pin      | TB6612FNG Pin     | L298N Module Pin | Signal Type         | Function / Description  |
++---------------+---------------+-------------------+------------------+---------------------+-------------------------+
+| Motor B (Left)| D5 (Timer 0)  | PWMB              | EnB              | Digital PWM Output  | Left Motor Speed PWM    |
+| Motor B (Left)| D2            | BIN1              | IN3              | Digital GPIO Output | Left Motor Forward      |
+| Motor B (Left)| D4            | BIN2              | IN4              | Digital GPIO Output | Left Motor Backward     |
+|               |               |                   |                  |                     |                         |
+| Motor A (Rgt) | D6 (Timer 0)  | PWMA              | EnA              | Digital PWM Output  | Right Motor Speed PWM   |
+| Motor A (Rgt) | D7            | AIN1              | IN1              | Digital GPIO Output | Right Motor Forward     |
+| Motor A (Rgt) | D8            | AIN2              | IN2              | Digital GPIO Output | Right Motor Backward    |
+|               |               |                   |                  |                     |                         |
+| Driver Logic  | 5V Rail       | VCC               | 5V / VSS         | Power Supply        | 5V Regulated Logic VCC  |
+| Driver Power  | Battery (+)   | VM                | 12V / VS         | High-Current Power  | 7.4V - 11.1V Raw LiPo   |
+| Driver GND    | Common GND    | GND               | GND              | Common Ground       | Star Ground Junction    |
+| Driver Enable | 5V Rail       | STBY (Standby)    | N/A (Jumpered)   | High Logic (5V)     | Enables H-Bridge IC     |
++---------------+---------------+-------------------+------------------+---------------------+-------------------------+
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 2: MOTOR OUTPUT TERMINALS TO DC GEARMOTORS
+------------------------------------------------------------------------------------------------------------------------
++------------------------+-------------------+------------------+------------------------+-----------------------------+
+| Motor / Actuator       | TB6612FNG Pin     | L298N Module Pin | Physical Motor Lead    | Rotation Direction Check    |
++------------------------+-------------------+------------------+------------------------+-----------------------------+
+| Left N20 Motor (B)     | B01               | OUT3             | Left Motor Red / (+)   | Rotates FORWARD when D2=HIGH|
+| Left N20 Motor (B)     | B02               | OUT4             | Left Motor Black / (-) | Rotates REVERSE when D4=HIGH|
+|                        |                   |                  |                        |                             |
+| Right N20 Motor (A)    | A01               | OUT1             | Right Motor Red / (+)  | Rotates FORWARD when D7=HIGH|
+| Right N20 Motor (A)    | A02               | OUT2             | Right Motor Black / (-) | Rotates REVERSE when D8=HIGH|
++------------------------+-------------------+------------------+------------------------+-----------------------------+
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 3: 8-CHANNEL IR SENSOR ARRAY (DIRECT NO-MUX ANALOG INPUTS)
+------------------------------------------------------------------------------------------------------------------------
++---------------+---------------+-------------------+--------------------+-------------------+-------------------------+
+| Sensor Channel| Physical Pos  | Sensor Array Pin  | Arduino Nano Pin   | Signal Type       | Weighted Centroid Value |
++---------------+---------------+-------------------+--------------------+-------------------+-------------------------+
+| Sensor 0      | Far Left      | OUT 0 / S0        | A0                 | Analog Input (ADC)| Weight = 10 (MSB: 128)  |
+| Sensor 1      | Mid Left-Outer| OUT 1 / S1        | A1                 | Analog Input (ADC)| Weight = 20 (Bit: 64)   |
+| Sensor 2      | Mid Left-Inner| OUT 2 / S2        | A2                 | Analog Input (ADC)| Weight = 30 (Bit: 32)   |
+| Sensor 3      | Center Left   | OUT 3 / S3        | A3                 | Analog Input (ADC)| Weight = 40 (Bit: 16)   |
+| Sensor 4      | Center Right  | OUT 4 / S4        | A4                 | Analog Input (ADC)| Weight = 50 (Bit: 8)    |
+| Sensor 5      | Mid Rgt-Inner | OUT 5 / S5        | A5                 | Analog Input (ADC)| Weight = 60 (Bit: 4)    |
+| Sensor 6      | Mid Rgt-Outer | OUT 6 / S6        | A6 (Analog-only)   | Analog Input (ADC)| Weight = 70 (Bit: 2)    |
+| Sensor 7      | Far Right     | OUT 7 / S7        | A7 (Analog-only)   | Analog Input (ADC)| Weight = 80 (LSB: 1)    |
+|               |               |                   |                    |                   |                         |
+| Sensor VCC    | Common Bus    | VCC / 5V          | 5V Pin (Regulated) | Power Supply      | Regulated 5V DC Rail    |
+| Sensor GND    | Common Bus    | GND               | GND Pin            | Common Ground     | System Star Ground      |
++---------------+---------------+-------------------+--------------------+-------------------+-------------------------+
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 4: USER INTERFACE & DIAGNOSTIC CONTROLS
+------------------------------------------------------------------------------------------------------------------------
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| Control Component      | Arduino Nano Pin  | Connection Terminal  | Mode / Config      | Function / Action Trigger   |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| Button 1 (Start PID)   | D11               | Push Button Leg 1    | INPUT_PULLUP       | Triggers Continuous PID Run |
+| Button 1 Ground        | Common GND        | Push Button Leg 2    | Ground Reference   | Active-LOW when pressed     |
+|                        |                   |                      |                    |                             |
+| Button 2 (Calibrate)   | D12               | Push Button Leg 1    | INPUT_PULLUP       | Triggers 4-Sweep Auto-Calib |
+| Button 2 Ground        | Common GND        | Push Button Leg 2    | Ground Reference   | Active-LOW when pressed     |
+|                        |                   |                      |                    |                             |
+| Status Indicator LED   | D13               | Onboard Built-in LED | Digital Output     | Illuminates during turns &  |
+|                        |                   |                      |                    | calibration routines        |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 5: POWER DISTRIBUTION, VOLTAGE REGULATION & NOISE FILTERING
+------------------------------------------------------------------------------------------------------------------------
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| Source / Origin        | Destination       | Recommended Wire     | Component          | Purpose / Specification     |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| LiPo Battery (+)       | Power Switch (IN) | 18-20 AWG (Red)      | 2S/3S LiPo Battery | Main Power Source (7.4-11V) |
+| Power Switch (OUT)     | TB6612FNG VM      | 18-20 AWG (Red)      | In-line 2A Fuse    | High Current Motor Drive Rail|
+| Power Switch (OUT)     | Buck Converter IN+| 22-24 AWG (Red)      | LM2596 / Mini Buck | Input to 5V Regulator       |
+|                        |                   |                      |                    |                             |
+| Buck Converter OUT+    | Arduino Nano 5V   | 22-24 AWG (Red)      | Regulated 5.0V     | Logic Bus Power Rail        |
+| Buck Converter OUT+    | Sensor Array VCC  | 22-24 AWG (Red)      | Regulated 5.0V     | Sensor Optical Emitter Rail |
+| Buck Converter OUT+    | TB6612FNG VCC     | 22-24 AWG (Red)      | Regulated 5.0V     | H-Bridge Logic Power        |
+| Buck Converter OUT+    | TB6612FNG STBY    | 22-24 AWG (Red)      | Tied to 5V Rail    | Keep Motor Driver Enabled   |
+|                        |                   |                      |                    |                             |
+| LiPo Battery (-)       | Star GND Point    | 18-20 AWG (Black)    | Common Ground Bus  | Primary System Ground       |
+| Star GND Point         | TB6612FNG GND     | 18-20 AWG (Black)    | Common Ground Bus  | Motor Power Ground          |
+| Star GND Point         | Buck Converter IN-| 22-24 AWG (Black)    | Common Ground Bus  | Regulator Ground            |
+| Star GND Point         | Arduino Nano GND  | 22-24 AWG (Black)    | Common Ground Bus  | Logic Ground                |
+| Star GND Point         | Sensor Array GND  | 22-24 AWG (Black)    | Common Ground Bus  | Sensor Array Ground         |
+|                        |                   |                      |                    |                             |
+| Decoupling Capacitor   | TB6612FNG VM & GND| Short Leads          | 470uF - 1000uF 25V | Absorbs inductive transients|
+|                        |                   |                      | Electrolytic Cap   | & prevents MCU brownouts    |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+
+========================================================================================================================
+                                         END OF MASTER WIRING TABLE
+========================================================================================================================
