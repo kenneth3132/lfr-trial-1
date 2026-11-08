@@ -1,0 +1,125 @@
+========================================================================================================================
+                          LINE FOLLOWER ROBOT (LFR) — SYSTEM MODIFICATIONS & CHANGELOG
+                                           Document: change.txt
+========================================================================================================================
+
+1. EXECUTIVE SUMMARY OF MODIFICATIONS
+------------------------------------------------------------------------------------------------------------------------
+A comprehensive audit and overhaul was performed on the direct No-MUX Arduino Nano line follower firmware.
+All changes were applied and tested in a clean, isolated production directory:
+  --> C:\Users\kenne\Desktop\lfr\Combined_Part1_to_Part8_NoMUX_Fixed
+
+Primary Issues Identified and Resolved:
+  1. Button 1 Inoperability / Pin Conflict:
+     - Old tutorial code used Pin A0 for Button 1.
+     - In No-MUX mode, Pin A0 is occupied by IR Sensor 0.
+     - Resolved by mapping Button 1 strictly to Pin D11 with Active-LOW logic (D11 -> Switch -> GND).
+     - Added real-time idle telemetry showing live button states to diagnose wiring instantly.
+  2. Missing Emergency Stop / Infinite PID Loop:
+     - The original sketch used an unbreakable `while(1)` with no way to halt the motors.
+     - Resolved by adding an Emergency Stop breakout: pressing Button 2 during PID tracking halts motors
+       immediately (motor(0, 0)) and returns to idle mode.
+  3. 90° Turn Infinite Spin Lockup:
+     - `turnRight()` and `turnLeft()` previously spun until center sensors recaptured the line.
+     - If the robot was lifted or ran off track, it stayed in an infinite loop spinning forever.
+     - Resolved by adding a 1500 ms watchdog timeout to automatically abort spin pivots if line is lost.
+  4. "Sticky" Direction Memory in State Machine:
+     - Centered and mild curve patterns (e.g., 0b00110000, 0b00001100) did not reset `direction` to "straight".
+     - A prior turn caused `direction` to remain stuck at "left" or "right", triggering false 90° pivots on track gaps.
+     - Resolved by expanding the pattern-matching switch statement to reset `direction = "straight"` on all normal line positions.
+  5. Off-Track Runaway on Straight Lines:
+     - When all sensors saw white while driving straight, the robot maintained 200 PWM speed into walls.
+     - Resolved by adding an off-track timer: if line is absent for >350 ms, motors automatically brake.
+  6. Calibration Sanity Check False Rejection:
+     - In `LoadCalibration()`, any threshold below 50 rejected the entire 8-sensor calibration and forced 500.
+     - Resolved by switching to per-channel validation and using `EEPROM.update()` to preserve EEPROM lifespan.
+  7. Duplicate Folder Removal:
+     - Deleted redundant folder `start_woki` while preserving `start_wokwi`.
+
+------------------------------------------------------------------------------------------------------------------------
+2. DETAILED FILE-BY-FILE CHANGELOG
+------------------------------------------------------------------------------------------------------------------------
+
+FILE 1: Combined_Part1_to_Part8_NoMUX_Fixed.ino
+  [NEW] Periodic Idle Diagnostic Stream:
+        - Every 500 ms while waiting in loop(), reads all sensors and prints button states:
+          `[IDLE MONITOR] Btn1(D11): HIGH(1) | Btn2(D12): HIGH(1) | Bitmask: ...`
+        - If Button 1 is pressed, reports `PRESSED(0)`. If it remains `HIGH(1)`, physical wiring issue is immediately detected.
+  [NEW] 3-Flash Safety Launch Countdown:
+        - When Button 1 is pressed, blinks the on-board LED 3 times over 1000 ms before engaging motor PWM.
+  [NEW] Emergency Halt Breakout:
+        - Inside `while(1)` PID tracking, polls `digitalRead(button_calib) == LOW`.
+        - If Button 2 is pressed, executes `motor(0, 0)`, turns off LED, and breaks back to idle `loop()`.
+  [NEW] Button Debounce Guards:
+        - Added `while(digitalRead(...) == LOW)` release loops to prevent double-triggering.
+
+FILE 2: PID_Controller.ino
+  [FIX] Sticky Direction Memory:
+        - Added cases for `0b00110000` (S2,S3), `0b00001100` (S4,S5), `0b01100000` (S1,S2), `0b00000110` (S5,S6),
+          `0b00100000` (S2), `0b00000100` (S5), `0b01110000`, `0b00001110` to reset `direction = "straight"`.
+  [NEW] Off-Track Straight Line Safety Auto-Brake:
+        - Added `offTrackStartTime` tracking. If `sumOnSensor == 0` for >350 ms while `direction == "straight"`,
+          commands `motor(0, 0)` instead of speeding forward indefinitely.
+  [NEW] Corner Axle Alignment Creep:
+        - Drives straight forward at 60% base speed for `delay_before_turn` (80 ms) before pivoting, ensuring the
+          wheel axle reaches the turn vertex.
+
+FILE 3: Turns.ino
+  [NEW] 1500 ms Watchdog Timeout:
+        - Added `startTurnTime = millis()` and `if (millis() - startTurnTime > 1500) break;` in both `turnRight()`
+          and `turnLeft()`.
+        - Prevents motor burnout and battery drain if robot loses track during a spin.
+
+FILE 4: SensorCalibration.ino
+  [FIX] EEPROM Cell Wear Reduction:
+        - Switched from `EEPROM.write()` to `EEPROM.update()` to prevent unnecessary flash cell wear.
+  [FIX] Independent Channel Validation:
+        - `LoadCalibration()` now validates each sensor independently (checks for contrast `Max > Min + 40` and
+          unwritten `0xFF`).
+        - If one sensor is uncalibrated, only that channel falls back to 500; valid channels retain their calibrations.
+
+FILE 5: read_sensor.ino
+  [FIX] Dynamic Threshold Acceptance:
+        - Changed `int thresh = (Reference_ADC[i] > 50) ? ...` to accept any valid calibrated threshold `> 0`.
+  [CLEANUP] Bitmask Synthesis:
+        - Uses bitwise OR (`bitSensor |= ...`) for clean state packing.
+
+FILE 6: motor.ino
+  [CLEANUP] Hardware H-Bridge Documentation:
+        - Added full logic table for TB6612FNG and L298N.
+        - Documented critical STBY pin requirement (must be tied to 5V).
+        - Clamped speeds to `[-255, 255]`.
+
+FILE 7: distance.ino
+  [CLEANUP] Added division-by-zero protection (`if (measured_distance <= 0) measured_distance = 30`).
+
+FILE 8: connections.txt
+  [NEW] Tabular Master Wiring Guide:
+        - Section 1: Arduino Nano Master Pinout Table
+        - Section 2: TB6612FNG vs. L298N Comparison Table
+        - Section 3: DC Gearmotors Output Terminals Table
+        - Section 4: 8-Channel Direct TCRT5000 IR Sensor Array Table
+        - Section 5: Push Buttons & Diagnostic LED Table (D11/D12 to GND)
+        - Section 6: Power Distribution, 5V Buck Converter, STBY to 5V, Star Ground Table
+        - Section 7: Hardware Audit & Troubleshooting Checklist
+
+FILE 9: functions and working.txt
+  [NEW] Chronological Execution Order Manual:
+        - Explains all 17 functions step-by-step from Boot/Power-up through setup(), idle loop(),
+          calibration, PID line tracking, turn recovery, fail-safe braking, and bench diagnostics.
+
+FILE 10: start_woki (Folder Removed)
+  [DELETE] Removed duplicate folder `start_woki`. The canonical folder `start_wokwi` is preserved intact.
+
+------------------------------------------------------------------------------------------------------------------------
+3. QUICK HARDWARE VERIFICATION CHECKLIST
+------------------------------------------------------------------------------------------------------------------------
+[ ] Button 1 (Start PID): Connect one switch terminal to Nano Pin D11, other terminal to GND.
+[ ] Button 2 (Calib / Halt): Connect one switch terminal to Nano Pin D12, other terminal to GND.
+[ ] TB6612FNG STBY: Must be wired directly to the 5V power bus. (If open, motors do not run).
+[ ] Motor Power VM: Must be powered by 7.4V - 11.1V battery. (USB alone cannot run DC motors).
+[ ] Common Ground: Tie Battery (-), Nano GND, Motor Driver GND, and Sensor GND together at a single point.
+
+========================================================================================================================
+                                                END OF CHANGELOG
+========================================================================================================================
