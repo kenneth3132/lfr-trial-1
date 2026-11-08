@@ -1,0 +1,156 @@
+========================================================================================================================
+                      LINE FOLLOWER ROBOT (LFR) — MASTER WIRING & CONNECTIONS TABLE
+                             Target Folder: Combined_Part1_to_Part8_NoMUX_Fixed
+                                 Architecture: Arduino Nano (Direct No-MUX)
+========================================================================================================================
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 1: MASTER ARDUINO NANO PIN ASSIGNMENT TABLE
+------------------------------------------------------------------------------------------------------------------------
++---------------+-------------------+----------------------+--------------------+--------------------------------------+
+| Nano Pin      | Hardware Type     | Subsystem Connected  | Signal Direction   | Detailed Functional Description      |
++---------------+-------------------+----------------------+--------------------+--------------------------------------+
+| D0 (RX)       | Hardware UART     | Serial Communication | Input (To Nano)    | 9600 Baud Telemetry & Programming    |
+| D1 (TX)       | Hardware UART     | Serial Communication | Output (From Nano) | 9600 Baud Telemetry & Debug Stream   |
+| D2            | Digital GPIO      | Left Motor (BIN1)    | Output             | Left Motor Forward Direction Control |
+| D3            | Digital PWM       | [SPARE / UNUSED]     | N/A                | Available for user expansion         |
+| D4            | Digital GPIO      | Left Motor (BIN2)    | Output             | Left Motor Reverse Direction Control |
+| D5            | Hardware PWM (T0) | Left Motor (PWMB)    | Output (PWM)       | Left Motor Speed (~976 Hz PWM)       |
+| D6            | Hardware PWM (T0) | Right Motor (PWMA)   | Output (PWM)       | Right Motor Speed (~976 Hz PWM)      |
+| D7            | Digital GPIO      | Right Motor (AIN1)   | Output             | Right Motor Forward Direction Control|
+| D8            | Digital GPIO      | Right Motor (AIN2)   | Output             | Right Motor Reverse Direction Control|
+| D9            | Digital PWM       | [SPARE / UNUSED]     | N/A                | Available for user expansion         |
+| D10           | Digital PWM       | [SPARE / UNUSED]     | N/A                | Available for user expansion         |
+| D11           | Digital GPIO      | Button 1 (Start PID) | Input (PULLUP)     | Active-LOW switch to GND             |
+| D12           | Digital GPIO      | Button 2 (Calib/Stop)| Input (PULLUP)     | Active-LOW switch to GND             |
+| D13           | Digital GPIO      | On-board Status LED  | Output             | Visual indicator (Turns & Countdown) |
+| A0            | Analog ADC (D14)  | IR Sensor 0          | Input (Analog)     | Far Left Reflectance Phototransistor |
+| A1            | Analog ADC (D15)  | IR Sensor 1          | Input (Analog)     | Mid Left-Outer Phototransistor       |
+| A2            | Analog ADC (D16)  | IR Sensor 2          | Input (Analog)     | Mid Left-Inner Phototransistor       |
+| A3            | Analog ADC (D17)  | IR Sensor 3          | Input (Analog)     | Center Left Phototransistor          |
+| A4            | Analog ADC (D18)  | IR Sensor 4          | Input (Analog)     | Center Right Phototransistor         |
+| A5            | Analog ADC (D19)  | IR Sensor 5          | Input (Analog)     | Mid Right-Inner Phototransistor      |
+| A6            | Analog-Only ADC   | IR Sensor 6          | Input (Analog)     | Mid Right-Outer Phototransistor      |
+| A7            | Analog-Only ADC   | IR Sensor 7          | Input (Analog)     | Far Right Reflectance Phototransistor|
+| 5V            | Regulated Power   | System 5V Bus        | Input / Output     | Regulated 5.0V Logic Rail            |
+| GND (x2)      | System Ground     | Common Ground Bus    | Reference Ground   | Star Ground Junction                 |
+| VIN           | Raw Power Input   | [OPTIONAL]           | Power Input        | Alternative 7-12V regulator input    |
++---------------+-------------------+----------------------+--------------------+--------------------------------------+
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 2: MOTOR DRIVER CONNECTIONS (TB6612FNG & L298N PIN COMPARISON)
+------------------------------------------------------------------------------------------------------------------------
++------------------------+---------------+-------------------+------------------+---------------------+----------------+
+| Subsystem Channel      | Nano Pin      | TB6612FNG Pin     | L298N Module Pin | Signal Type         | Default Logic  |
++------------------------+---------------+-------------------+------------------+---------------------+----------------+
+| Left Motor Speed (PWM) | D5 (Timer 0)  | PWMB              | EnB (Remove Jmp) | Digital PWM Output  | 0 to 255 Duty  |
+| Left Motor Forward     | D2            | BIN1              | IN3              | Digital GPIO Output | HIGH = Forward |
+| Left Motor Backward    | D4            | BIN2              | IN4              | Digital GPIO Output | HIGH = Reverse |
+|                        |               |                   |                  |                     |                |
+| Right Motor Speed (PWM)| D6 (Timer 0)  | PWMA              | EnA (Remove Jmp) | Digital PWM Output  | 0 to 255 Duty  |
+| Right Motor Forward    | D7            | AIN1              | IN1              | Digital GPIO Output | HIGH = Forward |
+| Right Motor Backward   | D8            | AIN2              | IN2              | Digital GPIO Output | HIGH = Reverse |
+|                        |               |                   |                  |                     |                |
+| Driver Logic VCC       | Nano 5V Pin   | VCC               | 5V / VSS         | Regulated Power     | 5.0V DC        |
+| Driver Motor VM        | Battery (+)   | VM                | 12V / VS         | High-Current Power  | 7.4V - 11.1V   |
+| Driver Ground (GND)    | Common GND    | GND (All pins)    | GND              | Power Ground        | Star Ground    |
+| Driver Enable / Standby| Nano 5V Pin   | STBY (CRUCIAL!)   | N/A (Jumpered)   | Constant HIGH (5V)  | Enables Driver |
++------------------------+---------------+-------------------+------------------+---------------------+----------------+
+* CRITICAL NOTE ON STBY: The TB6612FNG motor driver will produce ZERO output voltage if STBY is disconnected or grounded.
+  Always tie STBY directly to the 5V logic bus.
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 3: MOTOR OUTPUT TERMINALS TO N20 DC GEARMOTORS
+------------------------------------------------------------------------------------------------------------------------
++------------------------+-------------------+------------------+------------------------+-----------------------------+
+| Actuator Component     | TB6612FNG Pin     | L298N Module Pin | Motor Terminal Wire    | Direction Verification      |
++------------------------+-------------------+------------------+------------------------+-----------------------------+
+| Left DC Gearmotor (B)  | B01               | OUT3             | Left Motor Red (+)     | Rotates FORWARD when D2=HIGH|
+| Left DC Gearmotor (B)  | B02               | OUT4             | Left Motor Black (-)   | Rotates REVERSE when D4=HIGH|
+|                        |                   |                  |                        |                             |
+| Right DC Gearmotor (A) | A01               | OUT1             | Right Motor Red (+)    | Rotates FORWARD when D7=HIGH|
+| Right DC Gearmotor (A) | A02               | OUT2             | Right Motor Black (-)  | Rotates REVERSE when D8=HIGH|
++------------------------+-------------------+------------------+------------------------+-----------------------------+
+* If a motor rotates backward during test, simply swap its two motor terminal wires (B01/B02 or A01/A02).
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 4: 8-CHANNEL TCRT5000 IR SENSOR ARRAY (DIRECT NO-MUX WIRING)
+------------------------------------------------------------------------------------------------------------------------
++---------------+---------------+-------------------+--------------------+-------------------+-------------------------+
+| Sensor Channel| Physical Pos  | Sensor Board Pin  | Arduino Nano Pin   | Signal Type       | Centroid Weight Value   |
++---------------+---------------+-------------------+--------------------+-------------------+-------------------------+
+| Sensor 0      | Far Left      | OUT 0 / S0        | A0                 | Analog Input (ADC)| Weight = 10 (Bit: 128)  |
+| Sensor 1      | Mid Left-Outer| OUT 1 / S1        | A1                 | Analog Input (ADC)| Weight = 20 (Bit: 64)   |
+| Sensor 2      | Mid Left-Inner| OUT 2 / S2        | A2                 | Analog Input (ADC)| Weight = 30 (Bit: 32)   |
+| Sensor 3      | Center Left   | OUT 3 / S3        | A3                 | Analog Input (ADC)| Weight = 40 (Bit: 16)   |
+| Sensor 4      | Center Right  | OUT 4 / S4        | A4                 | Analog Input (ADC)| Weight = 50 (Bit: 8)    |
+| Sensor 5      | Mid Rgt-Inner | OUT 5 / S5        | A5                 | Analog Input (ADC)| Weight = 60 (Bit: 4)    |
+| Sensor 6      | Mid Rgt-Outer | OUT 6 / S6        | A6 (Analog-only)   | Analog Input (ADC)| Weight = 70 (Bit: 2)    |
+| Sensor 7      | Far Right     | OUT 7 / S7        | A7 (Analog-only)   | Analog Input (ADC)| Weight = 80 (Bit: 1)    |
+|               |               |                   |                    |                   |                         |
+| Sensor Array  | Power Bus     | VCC / 5V          | Regulated 5V Pin   | Power Supply      | Regulated 5.0V DC Rail  |
+| Sensor Array  | Ground Bus    | GND               | Common GND Pin     | System Ground     | Common Ground Bus       |
++---------------+---------------+-------------------+--------------------+-------------------+-------------------------+
+* Mechanical Guideline: Maintain a constant ground clearance of 3mm to 5mm between the TCRT5000 lenses and the track.
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 5: USER INTERFACE PUSH BUTTONS & SYSTEM INDICATORS
+------------------------------------------------------------------------------------------------------------------------
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| Control Component      | Arduino Nano Pin  | Connection Terminal  | Firmware Mode      | Function & Operating Logic  |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| Button 1 (START)       | D11               | Push Button Leg 1    | INPUT_PULLUP       | Triggers Continuous PID Run |
+| Button 1 Ground        | Common GND        | Push Button Leg 2    | Ground Reference   | Active-LOW (0V when pressed)|
+|                        |                   |                      |                    |                             |
+| Button 2 (CALIB/HALT)  | D12               | Push Button Leg 1    | INPUT_PULLUP       | In Idle: Triggers Calib     |
+|                        |                   |                      |                    | In PID: Emergency Stop/Halt |
+| Button 2 Ground        | Common GND        | Push Button Leg 2    | Ground Reference   | Active-LOW (0V when pressed)|
+|                        |                   |                      |                    |                             |
+| Status Indicator LED   | D13               | On-board Nano LED    | Digital Output     | Blinks 3x on PID countdown; |
+|                        |                   |                      |                    | On during turns & calib     |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+* IMPORTANT WIRING RULE:
+  - Both buttons use internal pull-up resistors (pinMode(..., INPUT_PULLUP)).
+  - Connect one leg of each switch to the specified Nano pin (D11 or D12).
+  - Connect the other leg directly to GND.
+  - DO NOT connect either button to 5V!
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 6: POWER DISTRIBUTION, VOLTAGE REGULATION & NOISE ISOLATION
+------------------------------------------------------------------------------------------------------------------------
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| Source Component       | Destination       | Recommended Wire     | In-Line Component  | Specification / Function    |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+| LiPo Battery (+)       | Power Switch (IN) | 18-20 AWG (Red)      | 2S/3S LiPo (7.4-11V| Main DC Energy Source       |
+| Power Switch (OUT)     | TB6612FNG VM      | 18-20 AWG (Red)      | In-line 2A Fuse    | High Current Motor Power    |
+| Power Switch (OUT)     | Buck Converter IN+| 22-24 AWG (Red)      | Mini-360 / LM2596  | Input to Step-Down Reg      |
+|                        |                   |                      |                    |                             |
+| Buck Converter OUT+    | Arduino Nano 5V   | 22-24 AWG (Red)      | 5.0V Regulated Bus | Supplies ATmega328P Logic   |
+| Buck Converter OUT+    | Sensor Array VCC  | 22-24 AWG (Red)      | 5.0V Regulated Bus | Supplies 8x TCRT5000 LEDs   |
+| Buck Converter OUT+    | TB6612FNG VCC     | 22-24 AWG (Red)      | 5.0V Regulated Bus | Supplies H-Bridge Logic     |
+| Buck Converter OUT+    | TB6612FNG STBY    | 22-24 AWG (Red)      | 5.0V Regulated Bus | Keeps Driver Active (STBY)  |
+|                        |                   |                      |                    |                             |
+| LiPo Battery (-)       | Star GND Point    | 18-20 AWG (Black)    | Common Ground Bus  | Primary System Ground Return|
+| Star GND Point         | TB6612FNG GND     | 18-20 AWG (Black)    | Common Ground Bus  | High-Current Motor Return   |
+| Star GND Point         | Buck Converter IN-| 22-24 AWG (Black)    | Common Ground Bus  | Regulator Ground Return     |
+| Star GND Point         | Arduino Nano GND  | 22-24 AWG (Black)    | Common Ground Bus  | Logic Ground Reference      |
+| Star GND Point         | Sensor Array GND  | 22-24 AWG (Black)    | Common Ground Bus  | Optical Ground Reference    |
+|                        |                   |                      |                    |                             |
+| Decoupling Capacitor   | TB6612FNG VM & GND| As short as possible | 470uF - 1000uF 25V | Absorbs inductive transients|
+|                        |                   |                      | Electrolytic Cap   | and prevents MCU brownouts  |
++------------------------+-------------------+----------------------+--------------------+-----------------------------+
+
+------------------------------------------------------------------------------------------------------------------------
+SECTION 7: HARDWARE AUDIT & TROUBLESHOOTING CHECKLIST
+------------------------------------------------------------------------------------------------------------------------
+[ ] 1. Check Button 1 Wiring: Is Button 1 wired between Pin D11 and GND? (NOT Pin A0, and NOT Pin 5V!)
+[ ] 2. Check Button 2 Wiring: Is Button 2 wired between Pin D12 and GND?
+[ ] 3. Check TB6612FNG STBY: Is the STBY pin tied directly to 5V? If STBY is open, motors will not spin!
+[ ] 4. Check Motor Power VM: Is the LiPo battery connected and switched ON? USB alone cannot supply DC motors.
+[ ] 5. Check Ground Unity: Are the Arduino GND, Motor Driver GND, Battery (-), and Buck GND all tied together?
+[ ] 6. Check Decoupling Capacitor: Is a 470uF-1000uF capacitor soldered close to the TB6612FNG VM and GND pins?
+[ ] 7. Check Sensor Clearance: Are the TCRT5000 sensors mounted 3mm to 5mm above the track surface?
+
+========================================================================================================================
+                                             END OF MASTER WIRING TABLE
+========================================================================================================================
